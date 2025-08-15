@@ -636,6 +636,9 @@ teamsBot.message("/reset", async (context, state) => {
     await dialogState.delete(context);
     await loginState.delete(context);
     await context.sendActivity("Ok I've deleted the current conversation state. Please type 'login' to start.");
+    
+    // Save the cleared state
+    await conversationState.saveChanges(context, false);
   } catch (error) {
     console.error(`[Reset Error] ${error}`);
     await context.sendActivity("I'm sorry, I'm having trouble resetting the conversation. Please try again.");
@@ -655,6 +658,12 @@ teamsBot.activity(ActivityTypes.Message, async (context, state) => {
   // Load the conversation state before any logic runs
   await conversationState.load(context);
 
+  // Skip processing if this is a reset command (already handled above)
+  const text = context.activity.text.toLowerCase();
+  if (text === '/reset') {
+    return; // Let the reset handler deal with it
+  }
+
   // Increment count state (if needed, but dialogs handle flow now)
   let count = state.conversation.count ?? 0;
   state.conversation.count = ++count;
@@ -670,7 +679,6 @@ teamsBot.activity(ActivityTypes.Message, async (context, state) => {
     // Check login status
     const loginData = await loginState.get(context);
     const isLoggedIn = loginData && loginData.isLoggedIn;
-    const text = context.activity.text.toLowerCase();
 
     // If dialog is running, let it continue regardless of login status
     if (isDialogRunning) {
